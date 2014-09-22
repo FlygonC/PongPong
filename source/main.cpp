@@ -1,5 +1,6 @@
 ﻿#include "AIE.h"
 #include <iostream>
+#include <fstream>
 #include <string>
 
 using namespace std;
@@ -9,6 +10,12 @@ const int screenHeight = 600;
 //Game State enum
 enum GAMESTATE {MENU, GAME, ENDGAME};
 GAMESTATE GameState = MENU;
+bool GamePlaying = true;
+//variable to save to file
+int gamesPlayed = 0;
+fstream pongFile;
+//function to check if file exists
+bool FileExists(const char* name) { ifstream file(name); return (bool)file; }
 //Struct for Paddles
 struct paddle {
 	//visual variables
@@ -111,11 +118,22 @@ void StartGame() {
 	ball.speedY = 0;
 	score1 = 0;
 	score2 = 0;
+
+	gamesPlayed += 1;
+	pongFile.open("PongFile.dat", ios_base::out | ios::binary);
+	pongFile.write((char*)&gamesPlayed, sizeof(gamesPlayed));
+	pongFile.close();
 }
-//Main menu is two strings
+//Main menu
 void UpdateMenu() {
+	DrawString("Games Played:", 0, screenHeight - 400);
+
+	char buffer2[99];
+	itoa(gamesPlayed, buffer2, 10);
+	DrawString(buffer2, 210, screenHeight-400);
+
 	DrawString("PongPongPongPongPongPong", 0, screenHeight - 23);
-	DrawString("2 Player. Press Space to start!", 50, screenHeight - 230);
+	DrawString("2 Player. Press Space to start! Press Esc to quit...", 50, screenHeight - 230);
 	if (IsKeyDown(32)) {
 		GameState = GAME;
 		StartGame();
@@ -219,32 +237,40 @@ int main( int argc, char* argv[] )
 		cout << i << "\n";
 	}
 
+	if (FileExists("PongFile.dat")) {
+		pongFile.open("PongFile.dat", ios_base::in | ios::binary);
+		pongFile.read((char*)&gamesPlayed, sizeof(gamesPlayed));
+		pongFile.close();
+	}
+	
     //Game Loop
     do
     {
 		switch (GameState) {
 		case MENU:
 			UpdateMenu();
+			if (IsKeyDown(256)) {//press escape to quit
+				GamePlaying = false;
+			}
 			break;
 		case GAME:
 			fDeltaT = GetDeltaTime();
 			UpdateGame(fDeltaT,true);//true or false is if the game is won or not, true if still playing
-			if (IsKeyDown(256)) {//press escape to quit to menu
+			if (IsKeyDown(259)) {//press backspace to quit to menu
 				GameState = MENU;
 			}
 		case ENDGAME:
 			fDeltaT = GetDeltaTime();
 			UpdateGame(fDeltaT, false);
-			if (IsKeyDown(256)) {//^^
+			if (IsKeyDown(259)) {//^^
 				GameState = MENU;
 			}
 			break;
 		}
-		
 
         ClearScreen();
 
-    } while(!FrameworkUpdate());
+    } while(!FrameworkUpdate() && GamePlaying);
 
     Shutdown();
 
